@@ -1,48 +1,43 @@
-NivoteFileSystem & NivoteElection
-This repository contains two JavaScript implementations of a cryptographic voting system using MCL (MIRACL Cryptographic Library) BLS12-381 pairing-based cryptography. While both scripts share fundamental cryptographic elements, they serve distinct purposes in vote encryption, tally computation, and simulation.
+Nivote Voting System
+This repository contains two JavaScript implementations of a cryptographic voting system using MCL (MIRACL Cryptographic Library) BLS12-381 pairing-based cryptography. Both scripts are located in the Nivote folder and provide secure, verifiable voting methods with encryption and tally computation.
 
-NivoteFileSystem.js
-This script implements an individual election-based voting system using threshold encryption and time-lock decryption mechanisms. It provides functionalities such as:
+How to Use the Scripts
+1. NivoteFileSystem.js (Standard Election Voting)
+This script is designed for single elections, handling voter registration, vote encryption, and time-locked tally decryption.
 
-Voter Registration: Each voter is assigned a secret-private key and a corresponding public key.
+Setup & Execution
+Ensure you have Node.js installed.
 
-Vote Casting: Voters can submit encrypted ballots using pairing-based cryptography.
+Navigate to the Nivote folder.
 
-Fiat-Shamir Proof: Ensures vote integrity using zero-knowledge proofs.
+Create an input.json file that specifies election details and voter choices.
 
-Tally Encryption: Votes are aggregated into a single encrypted result.
+Run the script:
 
-Time-Locked Decryption: Tally results are only deciphered after a configured delay.
+sh
+node NivoteFileSystem.js
+The encrypted tally result will be stored in results.json.
 
-Usage
-Place an input.json file in the same directory, specifying elections and voter choices.
+2. NivoteElection.js (Parallel Election Simulation)
+This script extends the system to simulate multiple voting groups, processing votes concurrently and estimating tallies if failures occur.
 
-Run the script, which registers voters, collects ballots, encrypts the tally, and performs delayed decryption.
+Setup & Execution
+Ensure you have Node.js installed.
 
-The final tally is stored in results.json.
+Navigate to the Nivote folder.
 
-NivoteElection.js
-This script extends the voting mechanism to simulate parallel elections across multiple voting groups with cryptographic aggregation. It introduces:
+Configure election parameters (such as voter count, group size, and absentee probability) directly in the script.
 
-Parallel Vote Processing: Multiple voter groups cast votes independently, simulating real-world elections.
+Run the script:
 
-Voter Behavior Simulation: Voters have a probability of abstaining from voting.
+sh
+node NivoteElection.js
+The simulation results, including estimated tallies, will be saved in parallel_simulation_results.json.
 
-Cryptographic Aggregation: Votes are verified and securely combined across groups.
-
-Failure Recovery Estimation: If a vote decryption fails, an estimated tally is computed.
-
-Usage
-Configure election parameters such as voter count, group size, absentee probability, and vote bias.
-
-Execute the script to simulate voting, compute encrypted tallies, and estimate global election results.
-
-The simulation summary is saved in parallel_simulation_results.json.
-
-Key Differences
+Key Differences Between the Two Scripts
 Feature	NivoteFileSystem.js	NivoteElection.js
-Scope	Single election tally	Simulated parallel voting
-Tally Mechanism	Time-locked decryption	Cryptographic aggregation
+Scope	Handles a single election tally	Simulates multiple voting groups
+Tally Mechanism	Time-locked decryption	Cryptographic aggregation across groups
 Voting Method	Direct voting per election	Group-based voting simulation
 Failure Handling	No tally estimation	Estimated tally recovery
-Both implementations showcase privacy-preserving, verifiable voting using pairing-based cryptography.
+Both implementations showcase privacy-preserving, verifiable voting using pairing-based cryptography, ensuring integrity and reliability in election systems.
