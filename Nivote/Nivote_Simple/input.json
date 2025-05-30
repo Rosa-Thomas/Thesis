@@ -1,0 +1,44 @@
+{
+  "elections": [
+    {
+      "id": "Election2025/01",
+      "votes": [
+        { "voterId": "Alice", "vote": 0 },
+        { "voterId": "Bob", "vote": 0 },
+        { "voterId": "Charlie", "vote": 0 },
+        { "voterId": "Diana", "vote": 1 },
+        { "voterId": "Eve", "vote": 0 }
+      ]
+    },
+    {
+      "id": "Election2025/02",
+      "votes": [
+        { "voterId": "Alice", "vote": 0 },
+        { "voterId": "Bob", "vote": 0 },
+        { "voterId": "Charlie", "vote": 0 },
+        { "voterId": "Diana", "vote": 1 },
+        { "voterId": "Eve", "vote": 1 }
+      ]
+    },
+    {
+      "id": "Election2025/03",
+      "votes": [
+        { "voterId": "Alice", "vote": 1 },
+        { "voterId": "Bob", "vote": 1 },
+        { "voterId": "Charlie", "vote": 0 },
+        { "voterId": "Diana", "vote": 0 },
+        { "voterId": "Eve", "vote": 1 }
+      ]
+    },
+    {
+      "id": "Election2025/04",
+      "votes": [
+        { "voterId": "Alice", "vote": 1 },
+        { "voterId": "Bob", "vote": 1 },
+        { "voterId": "Charlie", "vote": 1 },
+        { "voterId": "Diana", "vote": 0 },
+        { "voterId": "Eve", "vote": 1 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "electionId": "Election2025/SimulatedParallel",
+  "totalVoters": 1000,
+  "numberOfGroups": 200,
+  "missingProbability": 0.1,
+  "voteBias": 0.5,
+  "realGlobalTally": 462,
+  "globalTally": 312,
+  "failedCount": 80,
+  "failedPercentage": "40.00%",
+  "averageSuccessfulVote": "0.52",
+  "estimatedContribution": "208.00",
+  "estimatedGlobalTally": "520.00",
+  "errorPercentage": "12.55%"
+}

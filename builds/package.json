@@ -1,0 +1,13 @@
+{
+  "name": "thesis",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "NivoteTlock.js",
+  "scripts": {
+    "start": "node NivoteTlock.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
