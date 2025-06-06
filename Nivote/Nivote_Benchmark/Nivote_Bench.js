@@ -228,7 +228,9 @@ async function benchmarkEncryptionDecryption({
     `${r.run},${r.totalVoters},${r.groupSize},${r.missingProofRate},${r.voteBias},${r.group},${r.encTimeMs},${r.decTimeMs},${r.tally}`
   );
 
-  const outPath = path.join(__dirname, "benchmark_results_g20.csv");
+  const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, "-"); // replace colon and dot for filename safety
+    const outPath = path.join(__dirname, `benchmark_results_${timestamp}.csv`);
   const exists = await fileExists(outPath);
 
   if (!exists) {
