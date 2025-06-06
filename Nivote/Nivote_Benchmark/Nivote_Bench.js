@@ -130,6 +130,16 @@ class VotingSystem {
   }
 }
 
+// Helper to check if file exists
+async function fileExists(filepath) {
+  try {
+    await fs.access(filepath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function benchmarkEncryptionDecryption({
   totalVoters = 20,
   groupSize = 5,
@@ -188,6 +198,10 @@ async function benchmarkEncryptionDecryption({
 
       results.push({
         run,
+        totalVoters,
+        groupSize,
+        missingProofRate,
+        voteBias,
         group: g + 1,
         encTimeMs: encTime.toFixed(3),
         decTimeMs: decTime.toFixed(3),
@@ -208,26 +222,29 @@ async function benchmarkEncryptionDecryption({
     );
   }
 
-  // Write results to CSV
-  const csvHeader = "Run,Group,EncryptionTime(ms),DecryptionTime(ms),Tally\n";
-  const csvContent = results
-    .map(
-      (r) =>
-        `${r.run},${r.group},${r.encTimeMs},${r.decTimeMs},${r.tally}`
-    )
-    .join("\n");
-  const csvData = csvHeader + csvContent;
+  // Prepare CSV output with the requested columns
+  const csvHeader = "Run,TotalVoters,GroupSize,MissingProofRate,VoteBias,Group,EncryptionTime(ms),DecryptionTime(ms),Tally\n";
+  const csvLines = results.map(r =>
+    `${r.run},${r.totalVoters},${r.groupSize},${r.missingProofRate},${r.voteBias},${r.group},${r.encTimeMs},${r.decTimeMs},${r.tally}`
+  );
 
-  const outPath = path.join(__dirname, "benchmark_results.csv");
-  await fs.writeFile(outPath, csvData, "utf-8");
+  const outPath = path.join(__dirname, "benchmark_results_g20.csv");
+  const exists = await fileExists(outPath);
+
+  if (!exists) {
+    await fs.writeFile(outPath, csvHeader + csvLines.join("\n") + "\n", "utf-8");
+  } else {
+    await fs.appendFile(outPath, csvLines.join("\n") + "\n", "utf-8");
+  }
+
   console.log(`Benchmark results saved to ${outPath}`);
 }
 
 benchmarkEncryptionDecryption({
-  totalVoters: 20,
-  groupSize: 5,
-  numRuns: 5,
+  totalVoters: 2000,
+  groupSize: 10,
+  numRuns: 1,
   voteBias: 0.7,
   maxVoteValue: 1,
-  missingProofRate: 0,
+  missingProofRate: 0.05,
 }).catch(console.error);
