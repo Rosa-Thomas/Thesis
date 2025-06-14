@@ -1,0 +1,32 @@
+{
+  "name": "tlock-demo",
+  "version": "1.0.0",
+  "description": "Nivote Voting System\r This repository contains two JavaScript implementations of a cryptographic voting system using MCL (MIRACL Cryptographic Library) BLS12-381 pairing-based cryptography. Both scripts are located in the Nivote folder and provide secure, verifiable voting methods with encryption and tally computation.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "@noble/bls12-381": "^1.4.0",
+    "abort-controller": "^x.x.x",
+    "axios": "^1.9.0",
+    "drand-client": "^x.x.x",
+    "node-fetch": "^3.3.2",
+    "tlock-js": "^0.9.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rosa-Thomas/Thesis.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rosa-Thomas/Thesis/issues"
+  },
+  "type": "module",
+  "homepage": "https://github.com/Rosa-Thomas/Thesis#readme"
+}
