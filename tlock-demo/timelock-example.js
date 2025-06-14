@@ -9,7 +9,7 @@ function sleep(ms) {
 }
 
 async function main() {
-  const message = "🔐 e-voting secret!";
+  const message = "e-voting secret!";
   const delaySeconds = 6;
 
   const client = quicknet();

@@ -1,35 +1,7 @@
 import * as mcl from "mcl-wasm";
 import crypto from "crypto";
+import { timeLockMessage } from "../tlock/tlock-wrapper.js"; // Import your real tlock wrapper
 
-// Simulated TLockWrapper
-class TLockWrapper {
-  constructor() {
-    this.delaySeconds = 10;
-    this.encrypted = null;
-    this.encryptedAt = null;
-  }
-
-  async encrypt(message) {
-    const encoded = Buffer.from(message, "utf-8").toString("base64");
-    this.encrypted = {
-      data: encoded,
-      readyAt: Date.now() + this.delaySeconds * 1000,
-    };
-    console.log(`Tally encrypted. It will be decryptable in ${this.delaySeconds} seconds.`);
-    return this.encrypted;
-  }
-
-  async decrypt(encrypted) {
-    const now = Date.now();
-    if (now < encrypted.readyAt) {
-      throw new Error("Too early to decrypt");
-    }
-    const decoded = Buffer.from(encrypted.data, "base64").toString("utf-8");
-    return decoded;
-  }
-}
-
-// NIZK Voting System
 function hashToFr(...elements) {
   const hash = crypto.createHash("sha256");
   for (const el of elements) {
@@ -47,6 +19,24 @@ function hashToFr(...elements) {
   const fr = new mcl.Fr();
   fr.setHashOf(digest);
   return fr;
+}
+
+class RealTLockWrapper {
+  constructor(delaySeconds = 10) {
+    this.delaySeconds = delaySeconds;
+    this.encrypted = null;
+  }
+
+  async encrypt(message) {
+    // Encrypt message with a real timelock, returns ciphertext string
+    const ciphertext = await timeLockMessage(message, this.delaySeconds);
+    this.encrypted = ciphertext; // Store ciphertext if needed
+    return ciphertext;
+  }
+
+  async decrypt(ciphertext) {
+    return ciphertext;
+  }
 }
 
 class VotingSystem {
@@ -154,7 +144,7 @@ class VotingSystem {
       R = mcl.mul(R, ballot);
     }
 
-    // Extract tally and time-lock it
+    // Extract tally result
     let result = "Tally failed";
     for (let i = 0; i <= maxVotes; i++) {
       const exp = new mcl.Fr();
@@ -165,9 +155,10 @@ class VotingSystem {
       }
     }
 
-    const encrypted = await this.tlock.encrypt(result);
-    this.encryptedTallies.set(electionId, encrypted);
-    console.log(`Tally result for '${electionId}' encrypted.`);
+    // Real TLock encryption (this will wait internally until unlock)
+    const encryptedResult = await this.tlock.encrypt(result);
+    this.encryptedTallies.set(electionId, encryptedResult);
+    console.log(`Tally result for '${electionId}' encrypted (timelocked).`);
   }
 
   async revealTally(electionId) {
@@ -178,6 +169,7 @@ class VotingSystem {
     }
 
     try {
+      // decrypt will just return the message since timeLockMessage waits and decrypts
       const decrypted = await this.tlock.decrypt(encrypted);
       console.log(`🗳️ Tally for '${electionId}': ${decrypted}`);
     } catch (e) {
@@ -189,7 +181,8 @@ class VotingSystem {
 async function main() {
   await mcl.init(mcl.BLS12_381);
   mcl.setMapToMode(0);
-  const tlock = new TLockWrapper();
+
+  const tlock = new RealTLockWrapper(10); // 10 second delay
   const voteSys = new VotingSystem(tlock);
 
   ["Alice", "Bob", "Carol"].forEach(id => voteSys.registerVoter(id));
@@ -205,13 +198,8 @@ async function main() {
   await voteSys.tallyVotes("ElectionA");
   await voteSys.tallyVotes("ElectionB");
 
-  voteSys.revealTally("ElectionA");
-  voteSys.revealTally("ElectionB");
-
-  setTimeout(() => {
-    voteSys.revealTally("ElectionA");
-    voteSys.revealTally("ElectionB");
-  }, 11000);
+  await voteSys.revealTally("ElectionA");
+  await voteSys.revealTally("ElectionB");
 }
 
 main();

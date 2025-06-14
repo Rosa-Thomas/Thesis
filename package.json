@@ -9,6 +9,7 @@
   "dependencies": {
     "@noble/bls12-381": "^1.4.0",
     "abort-controller": "^x.x.x",
+    "age": "^0.2.1",
     "axios": "^1.9.0",
     "drand-client": "^x.x.x",
     "node-fetch": "^3.3.2",
