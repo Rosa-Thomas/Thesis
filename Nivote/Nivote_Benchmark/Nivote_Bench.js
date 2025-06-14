@@ -7,6 +7,24 @@ import crypto from "crypto";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function tlock(label, fn) {
+  const start = performance.now();
+  const result = fn();
+  const end = performance.now();
+  const duration = end - start;
+  console.log(`${label} took ${duration.toFixed(3)} ms`);
+  return { result, duration };
+}
+
+async function tlockAsync(label, fn) {
+  const start = performance.now();
+  const result = await fn();
+  const end = performance.now();
+  const duration = end - start;
+  console.log(`${label} took ${duration.toFixed(3)} ms`);
+  return { result, duration };
+}
+
 async function setupMCL() {
   await mcl.init(mcl.BLS12_381);
   mcl.setMapToMode(0);
@@ -66,22 +84,18 @@ class VotingSystem {
     const { sk } = this.voters.get(voterId);
     const gyj = this.computeGyj(voterId);
     const H = mcl.hashAndMapToG2(electionId);
-
     const pairing1 = mcl.pairing(gyj, H);
     const part1 = mcl.pow(pairing1, sk);
-
     const voteFr = new mcl.Fr();
     voteFr.setInt(vote);
     const pairing2 = mcl.pairing(this.g, H);
     const votePart = mcl.pow(pairing2, voteFr);
     const ballot = mcl.mul(part1, votePart);
-
     const r = new mcl.Fr();
     r.setByCSPRNG();
     const a = mcl.pow(pairing2, r);
     const c = hashToFr(pairing2, a, votePart);
     const s = mcl.sub(r, mcl.mul(c, voteFr));
-
     if (!this.ballots.has(electionId)) {
       this.ballots.set(electionId, []);
     }
@@ -130,7 +144,6 @@ class VotingSystem {
   }
 }
 
-// Helper to check if file exists
 async function fileExists(filepath) {
   try {
     await fs.access(filepath);
@@ -149,32 +162,26 @@ async function benchmarkEncryptionDecryption({
   missingProofRate = 0.0
 } = {}) {
   await setupMCL();
-
   const voterIDs = [];
   for (let i = 1; i <= totalVoters; i++) {
     voterIDs.push(`voter${i}`);
   }
-
   const groups = [];
   for (let i = 0; i < voterIDs.length; i += groupSize) {
     groups.push(voterIDs.slice(i, i + groupSize));
   }
-
   const results = [];
 
   for (let run = 1; run <= numRuns; run++) {
     console.log(`Starting run ${run}/${numRuns}`);
-
     let totalEncTime = 0;
     let totalDecTime = 0;
 
     for (let g = 0; g < groups.length; g++) {
       const group = groups[g];
       const electionId = `Run${run}_Group${g + 1}`;
-
       const vs = new VotingSystem();
       group.forEach((voterId) => vs.registerVoter(voterId));
-
       group.forEach((voterId) => {
         if (Math.random() > missingProofRate) {
           const vote = Math.random() < voteBias ? 1 : 0;
@@ -182,16 +189,12 @@ async function benchmarkEncryptionDecryption({
         }
       });
 
-      const encStart = performance.now();
-      const enc = await vs.encryptTally(electionId);
-      const encEnd = performance.now();
-
-      const decStart = performance.now();
-      const tally = await vs.decryptTally(enc, group.length * maxVoteValue);
-      const decEnd = performance.now();
-
-      const encTime = encEnd - encStart;
-      const decTime = decEnd - decStart;
+      const { result: enc, duration: encTime } = await tlockAsync("Encryption", () =>
+        vs.encryptTally(electionId)
+      );
+      const { result: tally, duration: decTime } = await tlockAsync("Decryption", () =>
+        vs.decryptTally(enc, group.length * maxVoteValue)
+      );
 
       totalEncTime += encTime;
       totalDecTime += decTime;
@@ -222,15 +225,14 @@ async function benchmarkEncryptionDecryption({
     );
   }
 
-  // Prepare CSV output with the requested columns
   const csvHeader = "Run,TotalVoters,GroupSize,MissingProofRate,VoteBias,Group,EncryptionTime(ms),DecryptionTime(ms),Tally\n";
   const csvLines = results.map(r =>
     `${r.run},${r.totalVoters},${r.groupSize},${r.missingProofRate},${r.voteBias},${r.group},${r.encTimeMs},${r.decTimeMs},${r.tally}`
   );
 
   const now = new Date();
-    const timestamp = now.toISOString().replace(/[:.]/g, "-"); // replace colon and dot for filename safety
-    const outPath = path.join(__dirname, `benchmark_results_${timestamp}.csv`);
+  const timestamp = now.toISOString().replace(/[:.]/g, "-");
+  const outPath = path.join(__dirname, `benchmark_results_${timestamp}.csv`);
   const exists = await fileExists(outPath);
 
   if (!exists) {

@@ -4,17 +4,14 @@ import { fileURLToPath } from "url";
 import * as mcl from "mcl-wasm";
 import crypto from "crypto";
 
-// File path helpers
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Setup MCL
 async function setupMCL() {
   await mcl.init(mcl.BLS12_381);
   mcl.setMapToMode(0);
 }
 
-// Deterministic Fiat-Shamir hash → Fr
 function hashToFr(...elements) {
   const hash = crypto.createHash("sha256");
   for (const el of elements) {
@@ -32,14 +29,6 @@ function hashToFr(...elements) {
   const fr = new mcl.Fr();
   fr.setHashOf(digest);
   return fr;
-}
-
-// Time-lock wrapper
-async function tlockWrapper(electionId, delaySeconds, operation) {
-  console.log(`[TLOCK] Waiting ${delaySeconds}s before proceeding with ${electionId}...`);
-  await new Promise(res => setTimeout(res, delaySeconds * 1000));
-  console.log(`[TLOCK] Time-lock released. Proceeding with ${electionId}`);
-  return await operation();
 }
 
 class VotingSystem {
@@ -131,19 +120,15 @@ class VotingSystem {
 
   async decryptTally(electionId, { R, base }, maxVotes = 10) {
     const delay = this.tlockDelays[electionId] ?? 1;
-    return await tlockWrapper(electionId, delay, async () => {
-      console.log(`Starting discrete log search up to maxVotes=${maxVotes}`);
-      for (let i = 0; i <= maxVotes; i++) {
-        const fr = new mcl.Fr();
-        fr.setInt(i);
-        if (mcl.pow(base, fr).isEqual(R)) {
-          console.log(`Match found! Tally = ${i}`);
-          return i;
-        }
+    await new Promise((res) => setTimeout(res, delay * 1000));
+    for (let i = 0; i <= maxVotes; i++) {
+      const fr = new mcl.Fr();
+      fr.setInt(i);
+      if (mcl.pow(base, fr).isEqual(R)) {
+        return i;
       }
-      console.log("No matching tally found — Tally Failed");
-      return "Tally Failed";
-    });
+    }
+    return "Tally Failed";
   }
 }
 
@@ -158,18 +143,11 @@ async function simulateParallelElection({
   console.time(`Total Simulation Time for ${electionId}`);
   await setupMCL();
 
-  const voterIDs = [];
-  for (let i = 1; i <= totalVoters; i++) {
-    voterIDs.push(`voter${i}`);
-  }
-
+  const voterIDs = Array.from({ length: totalVoters }, (_, i) => `voter${i + 1}`);
   const groups = [];
   for (let i = 0; i < voterIDs.length; i += groupSize) {
     groups.push(voterIDs.slice(i, i + groupSize));
   }
-  console.log(
-    `Simulating election "${electionId}" with ${totalVoters} voters divided into ${groups.length} groups.`
-  );
 
   const groupTallyPromises = groups.map((groupVoters, groupIndex) => (async () => {
     let realGroupTally = 0;
@@ -183,25 +161,15 @@ async function simulateParallelElection({
         const vote = (Math.random() < voteBias) ? 1 : 0;
         realGroupTally += vote;
         vs.castVote(voterId, vote, electionId);
-        console.log(`Group ${groupIndex + 1}: Voter ${voterId} votes ${vote}`);
-      } else {
-        console.log(`Group ${groupIndex + 1}: Voter ${voterId} is absent.`);
       }
     });
 
-    console.time(`Group ${groupIndex + 1} Encryption Time`);
     const enc = await vs.encryptTally(electionId);
-    console.timeEnd(`Group ${groupIndex + 1} Encryption Time`);
-
     const maxPossible = groupVoters.length * maxVoteValue;
-
-    console.time(`Group ${groupIndex + 1} Decryption Time`);
     const groupTally = await vs.decryptTally(electionId, enc, maxPossible);
-    console.timeEnd(`Group ${groupIndex + 1} Decryption Time`);
 
     const isFailed = typeof groupTally !== "number";
     const validGroupTally = isFailed ? 0 : groupTally;
-    console.log(`Group ${groupIndex + 1} tally: ${validGroupTally} ${isFailed ? "(FAILED)" : ""}`);
 
     return {
       tally: validGroupTally,
@@ -212,18 +180,11 @@ async function simulateParallelElection({
   })());
 
   const groupResults = await Promise.all(groupTallyPromises);
-
-  // Aggregate results
   const globalTally = groupResults.reduce((sum, result) => sum + result.tally, 0);
   const realGlobalTally = groupResults.reduce((sum, result) => sum + result.realTally, 0);
   const totalGroups = groups.length;
   const failedCount = groupResults.filter(result => result.failed).length;
-  const failedPercentage = totalGroups === 0 ? 0 : (failedCount / totalGroups) * 100;
-  if (failedCount === totalGroups) {
-    console.log("ERROR: 100% of vote tallies failed. Election results cannot be computed.");
-    console.timeEnd(`Total Simulation Time for ${electionId}`);
-    return { electionStatus: "Failed", message: "Election results cannot be determined due to total tally failure." };
-  }
+  const failedPercentage = (failedCount / totalGroups) * 100;
 
   let successfulVoteSum = 0;
   let successfulVoterCount = 0;
@@ -233,6 +194,7 @@ async function simulateParallelElection({
       successfulVoterCount += result.voterCount;
     }
   });
+
   const averageSuccessfulVote = successfulVoterCount > 0 ?
     successfulVoteSum / successfulVoterCount : maxVoteValue / 2;
 
@@ -244,42 +206,54 @@ async function simulateParallelElection({
   });
 
   const estimatedGlobalTally = globalTally + estimatedContribution;
+  const errorPercentage = realGlobalTally > 0 ?
+    (Math.abs(realGlobalTally - estimatedGlobalTally) / realGlobalTally) * 100 : 0;
 
-  let errorPercentage = 0;
-  if (realGlobalTally > 0) {
-    errorPercentage = (Math.abs(realGlobalTally - estimatedGlobalTally) / realGlobalTally) * 100;
+  const outputPath = path.join(__dirname, "parallel_simulation_results.csv");
+
+  if (!(await fs.stat(outputPath).catch(() => false))) {
+    const header = [
+      "electionId",
+      "totalVoters",
+      "numberOfGroups",
+      "missingProbability",
+      "voteBias",
+      "realGlobalTally",
+      "globalTally",
+      "failedCount",
+      "failedPercentage",
+      "averageSuccessfulVote",
+      "estimatedContribution",
+      "estimatedGlobalTally",
+      "errorPercentage"
+    ];
+    await fs.writeFile(outputPath, header.join(",") + "\n");
   }
 
-  const results = {
+  const csvRow = [
     electionId,
     totalVoters,
-    numberOfGroups: totalGroups,
+    totalGroups,
     missingProbability,
     voteBias,
     realGlobalTally,
     globalTally,
     failedCount,
-    failedPercentage: failedPercentage.toFixed(2) + "%",
-    averageSuccessfulVote: averageSuccessfulVote.toFixed(2),
-    estimatedContribution: estimatedContribution.toFixed(2),
-    estimatedGlobalTally: estimatedGlobalTally.toFixed(2),
-    errorPercentage: errorPercentage.toFixed(2) + "%"
-  };
+    failedPercentage.toFixed(2),
+    averageSuccessfulVote.toFixed(2),
+    estimatedContribution.toFixed(2),
+    estimatedGlobalTally.toFixed(2),
+    errorPercentage.toFixed(2)
+  ].join(",") + "\n";
 
-  const outputPath = path.join(__dirname, "parallel_simulation_results.json");
-  await fs.appendFile(outputPath, JSON.stringify(results, null, 2));
-  console.log(`Simulation complete. Results stored in ${outputPath}`);
-
+  await fs.appendFile(outputPath, csvRow);
   console.timeEnd(`Total Simulation Time for ${electionId}`);
 }
 
-
 async function runMultipleSimulations(numRuns = 10) {
   let totalTime = 0;
-
   for (let i = 0; i < numRuns; i++) {
     const start = performance.now();
-
     await simulateParallelElection({
       totalVoters: 100,
       groupSize: 5,
@@ -288,17 +262,10 @@ async function runMultipleSimulations(numRuns = 10) {
       maxVoteValue: 1,
       voteBias: 0.7
     });
-
     const end = performance.now();
-    const elapsedSeconds = (end - start) / 1000;
-    totalTime += elapsedSeconds;
-    console.log(`Run ${i + 1} runtime: ${elapsedSeconds.toFixed(3)} seconds`);
+    totalTime += (end - start) / 1000;
   }
-
-  const avgTime = totalTime / numRuns;
-  console.log(`Average runtime over ${numRuns} runs: ${avgTime.toFixed(3)} seconds`);
+  console.log(`Average runtime: ${(totalTime / numRuns).toFixed(3)} seconds`);
 }
 
 runMultipleSimulations().catch(console.error);
-
-
