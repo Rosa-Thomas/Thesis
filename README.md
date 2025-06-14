@@ -1,43 +1,103 @@
-Nivote Voting System
-This repository contains two JavaScript implementations of a cryptographic voting system using MCL (MIRACL Cryptographic Library) BLS12-381 pairing-based cryptography. Both scripts are located in the Nivote folder and provide secure, verifiable voting methods with encryption and tally computation.
+# 🗳️ Nivote Voting System
 
-How to Use the Scripts
-1. NivoteFileSystem.js (Standard Election Voting)
-This script is designed for single elections, handling voter registration, vote encryption, and time-locked tally decryption.
+**Nivote** is a collection of JavaScript-based cryptographic voting tools leveraging **BLS12-381 pairing-based cryptography** via `mcl-wasm`. It demonstrates privacy-preserving, verifiable voting with features such as time-locked tallies, group-based simulations, and performance benchmarking.
 
-Setup & Execution
-Ensure you have Node.js installed.
+---
 
-Navigate to the Nivote folder.
+## 📁 Project Structure
 
-Create an input.json file that specifies election details and voter choices.
+All relevant and functional code is located in the `Nivote/` folder:
 
-Run the script:
+```
+Nivote/
+├── Nivote_Benchmark/          # Benchmarking encryption/decryption performance
+├── Nivote_Simple/             # Basic voting system (input/output in JSON)
+├── Nivote_Test_Election/      # Simulates multiple parallel elections
+```
 
-sh
-node NivoteFileSystem.js
-The encrypted tally result will be stored in results.json.
+---
 
-2. NivoteElection.js (Parallel Election Simulation)
-This script extends the system to simulate multiple voting groups, processing votes concurrently and estimating tallies if failures occur.
+## 🔧 Requirements
 
-Setup & Execution
-Ensure you have Node.js installed.
+- Node.js (v14+ recommended)
+- Internet connection (for `mcl-wasm` initialization)
 
-Navigate to the Nivote folder.
+Install dependencies:
+```bash
+npm install
+```
 
-Configure election parameters (such as voter count, group size, and absentee probability) directly in the script.
+---
 
-Run the script:
+## 🧪 Script Overview
 
-sh
-node NivoteElection.js
-The simulation results, including estimated tallies, will be saved in parallel_simulation_results.json.
+### ✅ `Nivote_Simple/`
 
-Key Differences Between the Two Scripts
-Feature	NivoteFileSystem.js	NivoteElection.js
-Scope	Handles a single election tally	Simulates multiple voting groups
-Tally Mechanism	Time-locked decryption	Cryptographic aggregation across groups
-Voting Method	Direct voting per election	Group-based voting simulation
-Failure Handling	No tally estimation	Estimated tally recovery
-Both implementations showcase privacy-preserving, verifiable voting using pairing-based cryptography, ensuring integrity and reliability in election systems.
+A straightforward, single-election voting script.
+
+- **Input**: `Nivote_Simple/input.json`
+- **Output**: `Nivote_Simple/results.json`
+- **Purpose**: Run a basic election, process encrypted votes, and output final tallies.
+
+**Run it with:**
+```bash
+node Nivote_Simple/NivoteFileSystem.js
+```
+
+---
+
+### 📊 `Nivote_Benchmark/`
+
+Benchmarks encryption and decryption times over multiple runs.
+
+- **Output**: CSV file (e.g., `benchmark_results_<timestamp>.csv`)
+- **Purpose**: Analyze cryptographic performance (encryption/decryption time)
+
+> ⚠️ **Note**: Output file will be overwritten unless you rename it in the script.
+
+**Run it with:**
+```bash
+node Nivote_Benchmark/NivoteElection.js
+```
+
+---
+
+### 🧩 `Nivote_Test_Election/`
+
+Simulates multiple parallel elections with different voter groups.
+
+- **Output**: CSV file (e.g., `test_simulation_results.csv`)
+- **Purpose**: Test robustness under missing proofs and estimate tally error margins
+
+> ⚠️ **Note**: The output CSV will be overwritten unless renamed in code.
+
+**Run it with:**
+```bash
+node Nivote_Test_Election/Nivote_Test_Election.js
+```
+
+---
+
+## 📌 Notes
+
+- Only files inside the `Nivote/` folder are important; other files are utility/stub code.
+- Rename CSV output files manually before running new simulations if you want to retain past data.
+- Uses `mcl-wasm` for BLS12-381 pairing operations and zero-knowledge proof constructions.
+
+---
+
+## 📤 Outputs Summary
+
+| Folder                 | Input File                    | Output File                              | Format |
+|------------------------|-------------------------------|-------------------------------------------|--------|
+| `Nivote_Simple`        | `input.json`                  | `results.json`                            | JSON   |
+| `Nivote_Benchmark`     | Hardcoded inside script       | `benchmark_results_<timestamp>.csv`       | CSV    |
+| `Nivote_Test_Election` | Hardcoded inside script       | `test_simulation_results.csv`             | CSV    |
+
+---
+
+## 💡 Future Improvements
+
+- Optional CLI input for filenames and parameters
+- Automatic archiving of CSV results
+- More detailed zero-knowledge proof failure analysis
