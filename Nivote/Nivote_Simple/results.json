@@ -1,18 +1,18 @@
 [
   {
     "electionId": "Election2025/01",
-    "tally": 1
+    "tally": "1"
   },
   {
     "electionId": "Election2025/02",
-    "tally": 2
+    "tally": "3"
   },
   {
     "electionId": "Election2025/03",
-    "tally": 3
+    "tally": "4"
   },
   {
     "electionId": "Election2025/04",
-    "tally": 4
+    "tally": "4"
   }
 ]
