@@ -1,5 +1,5 @@
 import { HttpCachingChain, HttpChainClient } from "tlock-js";
-import defaults from "tlock-js/drand/defaults.js"; // FIXED
+import defaults from "tlock-js/drand/defaults.js"; 
 const { MAINNET_CHAIN_URL } = defaults;
 
 export function quicknet() {

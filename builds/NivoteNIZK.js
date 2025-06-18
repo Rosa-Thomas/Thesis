@@ -8,17 +8,22 @@ async function setupMCL() {
     console.log("MCL Initialized");
 }
 
-// Deterministic Fiat-Shamir hash → Fr with consistent serialization
 function hashToFr(...elements) {
     const hash = crypto.createHash("sha256");
     for (const el of elements) {
+        if (!el) {
+            throw new Error("Null or undefined element passed to hashToFr");
+        }
         if (typeof el.serialize === "function") {
             hash.update(el.serialize());
         } else if (typeof el.serializeToHexStr === "function") {
             hash.update(Buffer.from(el.serializeToHexStr(), "hex"));
         } else if (Buffer.isBuffer(el)) {
             hash.update(el);
+        } else if (typeof el === "string") {
+            hash.update(Buffer.from(el, "utf8"));
         } else {
+            console.log("Unsupported element type in hashToFr:", el);
             throw new Error("Unsupported element for hashing");
         }
     }
@@ -30,9 +35,10 @@ function hashToFr(...elements) {
 
 class VotingSystem {
     constructor() {
-        this.voters = new Map();     // voterId => { secretKey, publicKey }
-        this.ballots = [];           // [{ ballot, proof: { a, s, pairingBase, votePartHex } }]
-        this.g = new mcl.G1();       // generator of G1
+        this.voters = new Map();
+        this.ballots = [];
+        this.castLog = new Map();
+        this.g = new mcl.G1();
         this.g.setHashOf("generator");
     }
 
@@ -50,7 +56,7 @@ class VotingSystem {
         const jIndex = voterList.findIndex(([id]) => id === voterId);
 
         let gyj = new mcl.G1();
-        gyj.clear(); // identity element
+        gyj.clear();
 
         for (let k = 0; k < voterList.length; k++) {
             const [_, { publicKey }] = voterList[k];
@@ -65,48 +71,90 @@ class VotingSystem {
     }
 
     castVote(voterId, vote, electionId) {
-        if (!this.voters.has(voterId)) throw new Error(`Voter ${voterId} not registered`);
-        if (vote !== 0 && vote !== 1) throw new Error("Only binary votes (0 or 1) are supported");
+    if (!this.voters.has(voterId)) throw new Error(`Voter ${voterId} not registered`);
+    if (vote !== 0 && vote !== 1) throw new Error("Only binary votes (0 or 1) are supported");
 
-        const { secretKey: sk } = this.voters.get(voterId);
-        const gyj = this.computeGyj(voterId);
-        const H = mcl.hashAndMapToG2(electionId);
+    const log = this.castLog.get(electionId) || new Set();
+    if (log.has(voterId)) throw new Error(`${voterId} already voted in ${electionId}`);
 
-        // Ballot: e(gyj, H)^xj * e(g, H)^v
-        const pairing1 = mcl.pairing(gyj, H);
-        const part1 = mcl.pow(pairing1, sk);
+    const { secretKey: sk } = this.voters.get(voterId);
+    const gyj = this.computeGyj(voterId);
+    const H = mcl.hashAndMapToG2(electionId);
 
-        const voteFr = new mcl.Fr();
-        voteFr.setInt(vote);
+    const pairing1 = mcl.pairing(gyj, H);
+    const part1 = mcl.pow(pairing1, sk);
 
-        const pairing2 = mcl.pairing(this.g, H);
-        const votePart = mcl.pow(pairing2, voteFr); // e(g,H)^v
+    const voteFr = new mcl.Fr();
+    voteFr.setInt(vote);
 
-        const ballot = mcl.mul(part1, votePart); // final encrypted vote
+    const pairing2 = mcl.pairing(this.g, H);
+    const votePart = mcl.pow(pairing2, voteFr);
 
-        // --- NIZK Proof that v ∈ {0,1} ---
-        const r = new mcl.Fr();
-        r.setByCSPRNG();
+    const ballot = mcl.mul(part1, votePart);
 
-        const a = mcl.pow(pairing2, r);  // commitment: e(g, H)^r
+    const B = pairing2;
 
-        const c = hashToFr(pairing2, a, votePart); // Fiat-Shamir challenge on votePart only
+    // Initialize proof variables
+    let c0 = new mcl.Fr();
+    let c1 = new mcl.Fr();
+    let s0 = new mcl.Fr();
+    let s1 = new mcl.Fr();
+    let a0, a1;
 
-        const s = mcl.sub(r, mcl.mul(c, voteFr)); // s = r - c·v
+    if (vote === 0) {
+        // Simulate proof for vote = 1 side
+        c1.setByCSPRNG();
+        s1.setByCSPRNG();
+        a1 = mcl.mul(mcl.pow(B, s1), mcl.pow(B, c1));
 
-        this.ballots.push({
-            electionId,
-            ballot,
-            proof: {
-                a,
-                s,
-                pairingBase: pairing2.serializeToHexStr(),
-                votePartHex: votePart.serializeToHexStr(),
-            },
-        });
+        // Real proof for vote = 0 side
+        const r0 = new mcl.Fr();
+        r0.setByCSPRNG();
+        a0 = mcl.pow(B, r0);
 
-        console.log(`Ballot cast by ${voterId} with NIZK`);
+        const c = hashToFr(B, a0, a1, votePart, electionId);
+        c0 = mcl.sub(c, c1);
+        s0 = mcl.sub(r0, mcl.mul(c0, voteFr));
+    } else {
+        // Simulate proof for vote = 0 side
+        c0.setByCSPRNG();
+        s0.setByCSPRNG();
+        a0 = mcl.mul(mcl.pow(B, s0), mcl.pow(votePart, c0));
+
+        // Real proof for vote = 1 side
+        const r1 = new mcl.Fr();
+        r1.setByCSPRNG();
+        a1 = mcl.pow(B, r1);
+
+        const c = hashToFr(B, a0, a1, votePart, electionId);
+        c1 = mcl.sub(c, c0);
+        s1 = mcl.sub(r1, mcl.mul(c1, voteFr));
+
+        // Fix a1 with the challenge part
+        a1 = mcl.mul(mcl.pow(B, s1), mcl.pow(B, c1));
     }
+
+    this.ballots.push({
+        electionId,
+        ballot,
+        proof: {
+            a0: a0.serializeToHexStr(),
+            a1: a1.serializeToHexStr(),
+            c0: c0.serializeToHexStr(),
+            c1: c1.serializeToHexStr(),
+            s0: s0.serializeToHexStr(),
+            s1: s1.serializeToHexStr(),
+            pairingBase: B.serializeToHexStr(),
+            votePartHex: votePart.serializeToHexStr(),
+        },
+    });
+
+    log.add(voterId);
+    this.castLog.set(electionId, log);
+
+    console.log(`Ballot cast by ${voterId} with ZK OR-proof`);
+}
+
 
     tallyVotes(electionId, maxVotes = 10) {
         const ballotsForElection = this.ballots.filter(b => b.electionId === electionId);
@@ -121,18 +169,35 @@ class VotingSystem {
         R.setInt(1);
 
         for (const { ballot, proof } of ballotsForElection) {
-            const { a, s, pairingBase, votePartHex } = proof;
-
             const base = new mcl.GT();
-            base.deserializeHexStr(pairingBase);
+            base.deserializeHexStr(proof.pairingBase);
 
             const votePart = new mcl.GT();
-            votePart.deserializeHexStr(votePartHex);
+            votePart.deserializeHexStr(proof.votePartHex);
 
-            const c = hashToFr(base, a, votePart);
-            const lhs = mcl.mul(mcl.pow(base, s), mcl.pow(votePart, c));
+            const a0 = new mcl.GT();
+            a0.deserializeHexStr(proof.a0);
 
-            if (!lhs.isEqual(a)) {
+            const a1 = new mcl.GT();
+            a1.deserializeHexStr(proof.a1);
+
+            const c0 = new mcl.Fr();
+            const c1 = new mcl.Fr();
+            const s0 = new mcl.Fr();
+            const s1 = new mcl.Fr();
+
+            c0.deserializeHexStr(proof.c0);
+            c1.deserializeHexStr(proof.c1);
+            s0.deserializeHexStr(proof.s0);
+            s1.deserializeHexStr(proof.s1);
+
+            // Verification equations for OR proof
+            const lhs0 = mcl.mul(mcl.pow(base, s0), mcl.pow(votePart, c0)); // For vote=0
+            const lhs1 = mcl.mul(mcl.pow(base, s1), mcl.pow(base, c1));     // For vote=1
+
+            const c = hashToFr(base, a0, a1, votePart, electionId);
+
+            if (!a0.isEqual(lhs0) || !a1.isEqual(lhs1) || !c.isEqual(mcl.add(c0, c1))) {
                 console.log("Invalid ballot proof — skipping");
                 continue;
             }
@@ -140,7 +205,6 @@ class VotingSystem {
             R = mcl.mul(R, ballot);
         }
 
-        // Extract discrete log tally: find i with e(g,H)^i == R
         const base = mcl.pairing(this.g, H);
         let tally = null;
         for (let i = 0; i <= maxVotes; i++) {
@@ -156,7 +220,6 @@ class VotingSystem {
     }
 }
 
-// test
 async function main() {
     await setupMCL();
     const voteSystem = new VotingSystem();
@@ -175,7 +238,7 @@ async function main() {
     voteSystem.castVote("John", 1, "Election2025/02");
     voteSystem.castVote("Sarah", 0, "Election2025/02");
 
-    voteSystem.tallyVotes("Election2025/02");  
+    voteSystem.tallyVotes("Election2025/02");
 }
 
 main();

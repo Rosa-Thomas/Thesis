@@ -209,7 +209,7 @@ async function simulateParallelElection({
   const errorPercentage = realGlobalTally > 0 ?
     (Math.abs(realGlobalTally - estimatedGlobalTally) / realGlobalTally) * 100 : 0;
 
-  const outputPath = path.join(__dirname, "parallel_simulation_results.csv");
+  const outputPath = path.join(__dirname, "parallel_simulation_results_1.csv");
 
   if (!(await fs.stat(outputPath).catch(() => false))) {
     const header = [
@@ -255,7 +255,7 @@ async function runMultipleSimulations(numRuns = 10) {
   for (let i = 0; i < numRuns; i++) {
     const start = performance.now();
     await simulateParallelElection({
-      totalVoters: 100,
+      totalVoters: 1000,
       groupSize: 5,
       missingProbability: 0.03,
       electionId: `Election_Run${i + 1}`,

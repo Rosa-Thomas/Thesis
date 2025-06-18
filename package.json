@@ -1,7 +1,7 @@
 {
   "name": "tlock-demo",
   "version": "1.0.0",
-  "description": "Nivote Voting System\r This repository contains two JavaScript implementations of a cryptographic voting system using MCL (MIRACL Cryptographic Library) BLS12-381 pairing-based cryptography. Both scripts are located in the Nivote folder and provide secure, verifiable voting methods with encryption and tally computation.",
+  "description": "",
   "main": "index.js",
   "directories": {
     "test": "tests"

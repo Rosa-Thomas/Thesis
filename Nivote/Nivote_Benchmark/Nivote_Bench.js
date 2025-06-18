@@ -232,7 +232,7 @@ async function benchmarkEncryptionDecryption({
 
   const now = new Date();
   const timestamp = now.toISOString().replace(/[:.]/g, "-");
-  const outPath = path.join(__dirname, `benchmark_results_${timestamp}.csv`);
+  const outPath = path.join(__dirname, `benchmark_results_10K${timestamp}.csv`);
   const exists = await fileExists(outPath);
 
   if (!exists) {
@@ -245,9 +245,9 @@ async function benchmarkEncryptionDecryption({
 }
 
 benchmarkEncryptionDecryption({
-  totalVoters: 2000,
+  totalVoters: 10000,
   groupSize: 10,
-  numRuns: 1,
+  numRuns: 3,
   voteBias: 0.7,
   maxVoteValue: 1,
   missingProofRate: 0.05,

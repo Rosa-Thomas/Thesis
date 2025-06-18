@@ -1,6 +1,6 @@
 import * as mcl from "mcl-wasm";
 import crypto from "crypto";
-import { timeLockMessage } from "../tlock/tlock-wrapper.js"; // Import your real tlock wrapper
+import { timeLockMessage } from "../tlock/tlock-wrapper.js"; 
 
 function hashToFr(...elements) {
   const hash = crypto.createHash("sha256");

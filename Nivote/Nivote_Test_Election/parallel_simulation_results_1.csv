@@ -1,0 +1,11 @@
+electionId,totalVoters,numberOfGroups,missingProbability,voteBias,realGlobalTally,globalTally,failedCount,failedPercentage,averageSuccessfulVote,estimatedContribution,estimatedGlobalTally,errorPercentage,,
+Election_Run1,1000,200,0.03,0.7,694,610,29,14.5,0.71,103.45,713.45,2.8,Average Failed %,13.8
+Election_Run2,1000,200,0.03,0.7,668,608,21,10.5,0.68,71.33,679.33,1.7,Average Error ,2.768
+Election_Run3,1000,200,0.03,0.7,683,607,25,12.5,0.69,86.71,693.71,1.57,,
+Election_Run4,1000,200,0.03,0.7,691,616,28,14,0.72,100.28,716.28,3.66,,
+Election_Run5,1000,200,0.03,0.7,682,617,24,12,0.7,84.14,701.14,2.81,,
+Election_Run6,1000,200,0.03,0.7,670,580,34,17,0.7,118.8,698.8,4.3,,
+Election_Run7,1000,200,0.03,0.7,674,619,20,10,0.69,68.78,687.78,2.04,,
+Election_Run8,1000,200,0.03,0.7,680,589,32,16,0.7,112.19,701.19,3.12,,
+Election_Run9,1000,200,0.03,0.7,675,570,35,17.5,0.69,120.91,690.91,2.36,,
+Election_Run10,1000,200,0.03,0.7,682,606,28,14,0.7,98.65,704.65,3.32,,
